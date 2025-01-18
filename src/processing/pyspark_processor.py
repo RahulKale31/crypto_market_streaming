@@ -32,6 +32,10 @@ class SparkStreamProcessor:
                 .config("spark.sql.streaming.checkpointLocation", self.spark_config['checkpoint_location'])
                 .config("spark.jars.packages", 
                        "org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.0,org.postgresql:postgresql:42.2.23")
+                .config("spark.sql.streaming.stateStore.providerClass", "org.apache.spark.sql.execution.streaming.state.HDFSBackedStateStoreProvider")
+                #HDFSBackedStateStoreProvider stores state data in HDFS-compatible file systems (including local filesystem)
+                .config("spark.sql.streaming.stateStore.maintenance.cleanupDelay", "1800s")
+                #Sets how long (1800s = 30 minutes) to wait before cleaning up old state checkpoints
                 .getOrCreate())
 
     def write_to_postgres(self, batch_df, batch_id):
