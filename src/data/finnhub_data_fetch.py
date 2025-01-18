@@ -1,33 +1,31 @@
 import websocket
 import json
 from kafka import KafkaProducer
-import logging
 from datetime import datetime
+from src.utils.config import ConfigLoader
+from src.utils.logger import Logger
 
 class StockDataPipeline:
-    def __init__(self, finnhub_token, kafka_bootstrap_servers=['localhost:9092']):
-        self.finnhub_token = finnhub_token
+    def __init__(self):
+        # Initialize logger
+        self.logger = Logger(__name__, 'finnhub_producer.log').get_logger()
+        
+        # Load configuration
+        self.config = ConfigLoader()
+        finnhub_config = self.config.get_finnhub_config()
+        kafka_config = self.config.get_kafka_config()
+        
+        # Set Finnhub configuration
+        self.finnhub_token = finnhub_config['token']
+        self.symbols = finnhub_config['symbols']
+        
+        # Initialize Kafka producer
         self.kafka_producer = KafkaProducer(
-            bootstrap_servers=kafka_bootstrap_servers,
+            bootstrap_servers=kafka_config['bootstrap_servers'],
             key_serializer=lambda k: k.encode('utf-8') if k else None,
             value_serializer=lambda v: json.dumps(v).encode('utf-8')
         )
-        self.symbols = [
-            "BINANCE:BTCUSDT",    # Bitcoin
-            "BINANCE:ETHUSDT",    # Ethereum
-            "BINANCE:SOLUSDT",    # Solana
-            "BINANCE:MATICUSDT",  # Polygon
-            "BINANCE:ADAUSDT"     # Cardano
-        ]
-        self.kafka_topic = "stock-data"
-        self.setup_logging()
-
-    def setup_logging(self):
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s - %(levelname)s - %(message)s'
-        )
-        self.logger = logging.getLogger(__name__)
+        self.kafka_topic = kafka_config['topic']
 
     def on_message(self, ws, message):
         try:
@@ -52,13 +50,14 @@ class StockDataPipeline:
                     value=data
                 ).get(timeout=10)
                 
-                self.logger.info(f"Trade data sent to Kafka for symbol {symbol}: {data}")
+                self.logger.info(f"Trade data sent to Kafka for symbol {symbol}")
+                self.logger.debug(f"Data: {data}")  # Detailed logging for debugging
             
         except Exception as e:
-            self.logger.error(f"Error processing message: {e}")
+            self.logger.error(f"Error processing message: {str(e)}")
 
     def on_error(self, ws, error):
-        self.logger.error(f"WebSocket error: {error}")
+        self.logger.error(f"WebSocket error: {str(error)}")
 
     def on_close(self, ws, close_status_code, close_msg):
         self.logger.info(f"WebSocket Connection Closed - Status code: {close_status_code}, Message: {close_msg}")
