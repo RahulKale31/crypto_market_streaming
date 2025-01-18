@@ -52,11 +52,15 @@ bin/windows/kafka-topics.bat --create --topic stock-data --bootstrap-server loca
 1. Start the data producer:
 ```bash
 python src/data/finnhub_client.py
+or
+start_producer.bat
 ```
 
 2. Start the Spark processor:
 ```bash
 python src/processing/spark_processor.py
+or
+start_consumer.bat
 ```
 
 ## Contributing
